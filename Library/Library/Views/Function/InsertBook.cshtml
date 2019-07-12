@@ -1,0 +1,108 @@
+﻿@{
+    ViewBag.Title = "InsertBook";
+}
+
+<h2>新增畫面</h2>
+
+@if (ViewBag.InsertResult == true)
+{
+    <script>alert("新增成功!");</script>
+}
+
+<div id="insett_form">
+    <ul>
+        <label style="text-align:right"><span class="red">*</span>書名 </label>
+        <br>
+        <input id="book_name" name="BOOK NAME" type="text" class="k-textbox" style="width:70%;" value="" required />
+    </ul>
+    <ul>
+        <label style="text-align:right"><span class="red">*</span>作者 </label>
+        <br>
+        <input id="book_author" name="BOOK AUTHOR" type="text" class="k-textbox" style="width:70%;" value="" required />
+    </ul>
+    <ul>
+        <label style="text-align:right"><span class="red">*</span>出版社 </label>
+        <br>
+        <input id="book_publicher" name="BOOK PUBLISHER" type="text" class="k-textbox" style="width:70%;" value="" required />
+    </ul>
+    <ul>
+        <label style="text-align:right"><span class="red">*</span>內容簡介 </label>
+        <br>
+        <textarea id="book_intro" name="BOOK INTRODUCTION" type="text" class="k-textbox" style="width:100%;" value="" required></textarea>
+    </ul>
+    <ul>
+        <label style="text-align:right">購書日期 </label>
+        <br>
+        <input id="buy_date" title="datepicker" style="width:70%;" required />
+    </ul>
+    <ul>
+        <label style="text-align:right" for="book_class_dropdownlist" class="required"><span class="red">*</span>圖書類別</label>
+        <br>
+        <select id="book_class_dropdownlist" name="BOOK CLASS" style="width:70%;" required></select><span class="k-invalid-msg" data-for="BOOK CLASS"></span>   
+    </ul>
+</div>
+<br />
+<div>
+    <button class="k-button k-primary" id="Sent_Button">存檔</button>
+</div>
+<br />
+<a href="/Function/Index">Back to List</a>
+
+<script>
+    $(document).ready(function () {
+        $("#book_class_dropdownlist").kendoDropDownList({
+            dataTextField: "Text",
+            dataValueField: "Value",
+            dataSource: {
+                transport: {
+                    read: {
+                        url: "DropForClass",
+                        type: "post",
+                        dataType: "Json"
+                    }
+                }
+            }
+        });
+
+        $("#buy_date").kendoDatePicker({
+            value: new Date(),
+            format: "yyyy/MM/dd",
+            dateInput: true
+        });
+        var validator = $("#insett_form").kendoValidator().data("kendoValidator");
+
+        $('#Sent_Button').click(function () {
+            var msg = "確定新增?";
+            if (confirm(msg) == true) {
+                if (validator.validate()) {
+                    var inset_data = {
+                        "BookName": $("#book_name").val(),
+                        "Author": $("#book_author").val(),
+                        "Publisher": $("#book_publicher").val(),
+                        "Introduction": $("#book_intro").val(),
+                        "BuyDate": $("#buy_date").val(),
+                        "BookClassId": $("#book_class_dropdownlist").val(),
+                    };
+                    $.ajax({
+                        type: "post",
+                        url: "InsertBook",
+                        dataType: "Json",
+                        data: inset_data,
+                        success: function () {
+                            alert("新增成功");
+                            location.href = "/Function/InsertBook";
+                        }
+                    });
+                }
+                else {
+                    alert("欄位未完成");
+                }
+            }
+        });
+    });
+</script>
+<style>
+    .red {
+        color:red;
+    }
+</style>

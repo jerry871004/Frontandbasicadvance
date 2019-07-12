@@ -1,0 +1,268 @@
+﻿@{
+    ViewBag.Title = "Index";
+}
+
+<h2>圖書維護</h2>
+<form class="k-form">
+    <div>
+        <label>書名</label>
+        <div>
+            <input id="book_name" type="text" class="k-textbox" value="" style="width:100%;" />
+        </div>
+    </div>
+    <div>
+        <label>圖書類別</label>
+        <select id="book_class_dropdownlist" style="width: 100%"></select>
+    </div>
+    <div>
+        <label>借閱人</label>
+        <select id="book_borrow_people_dropdownlist" style="width: 100%"></select>
+    </div>
+    <div>
+        <label>借閱狀態</label>
+        <select id="book_borrow_status_dropdownlist" style="width: 100%"></select>
+    </div>
+    <br />
+</form>
+<div>
+    <button class="k-button k-primary" id="btn_search">查詢</button>
+    <button class="k-button k-primary" id="reset_search" type="button" onclick="location.href = '/Function/Index'" ;>清除</button>
+    <button class="k-button k-primary" id="btn_add_new_book type="button" onclick="location.href = '/Function/InsertBook';">新增</button>
+</div>
+<br />
+<div id="Record_Window">
+    <div id="Record_Grid"></div>
+</div>
+
+<div id="Detail-Window" style="display: none;">
+    <table class="table table-bordered table-striped">
+        <tr>
+            <td style="text-align: right">書名</td>
+            <td id="Detail-name"></td>
+        </tr>
+        <tr>
+            <td style="text-align: right">作者</td>
+            <td id="Detail-author"></td>
+        </tr>
+        <tr>
+            <td style="text-align: right">出版商</td>
+            <td id="Detail-publisher"></td>
+        </tr>
+        <tr>
+            <td style="text-align: right">內容簡介</td>
+            <td id="Detail-introduction"></td>
+        </tr>
+        <tr>
+            <td style="text-align: right">購書日期</td>
+            <td id="Detail-buydate"></td>
+        </tr>
+        <tr>
+            <td style="text-align: right">圖書類別</td>
+            <td id="Detail-class"></td>
+        </tr>
+    </table>
+</div>
+
+
+<div id="Show_Book_grid"></div>
+
+<script type="text/javascript">
+    $(document).ready(function () {
+        $("#book_class_dropdownlist").kendoDropDownList({
+            dataTextField: "Text",
+            dataValueField: "Value",
+            dataSource: {
+                transport: {
+                    read: {
+                        url: "DropForClass",
+                        type: "post",
+                        dataType: "Json"
+                    }
+                }
+            }
+        });
+
+        $("#book_borrow_people_dropdownlist").kendoDropDownList({
+            dataTextField: "Text",
+            dataValueField: "Value",
+            dataSource: {
+                transport: {
+                    read: {
+                        url: "DropForUser",
+                        type: "post",
+                        dataType: "Json"
+                    }
+                }
+            }
+        });
+
+        $("#book_borrow_status_dropdownlist").kendoDropDownList({
+            dataTextField: "Text",
+            dataValueField: "Value",
+            dataSource: {
+                transport: {
+                    read: {
+                        url: "DropForStatus",
+                        type: "post",
+                        dataType: "Json"
+                    }
+                }
+            }
+        });
+
+        $("#btn_search").click(function () {
+            var search_data = {
+                "BookName": $('#book_name').val(),
+                "BookClassId": $('#book_class_dropdownlist').val(),
+                "KeeperId": $('#book_borrow_people_dropdownlist').val(),
+                "BookStatusId": $('#book_borrow_status_dropdownlist').val()
+            };
+            $("#Show_Book_grid").kendoGrid({
+                dataSource: {
+                    transport: {
+                        read: {
+                            url: "Get_data_grid",
+                            type: "post",
+                            dataType: "Json",
+                            data: search_data
+                        }
+                    },
+                    schema: {
+                        model: {
+                            fields: {
+                                BookClassName: { type: "string" },
+                                BookName: { type: "string" },
+                                BuyDate: { type: "string" },
+                                BookStatus: { type: "string" },
+                                Keeper: { type: "string" }
+                            }
+                        }
+                    },
+                    pageSize: 20
+                },
+                height: 550,
+                sortable: true,
+                pageable: {
+                    input: true,
+                    numeric: true
+                },
+                columns: [
+                    { field: "BookClassName", title: "書籍類別", width: "15%" },
+                    { field: "BookName", title: "書名", width: "50%", template: "<div onclick='Detail(this);'>#:BookName#</div>", color: "blue;"},
+                    { field: "BuyDate", title: "購書日期", width: "15%" },
+                    { field: "BookStatus", title: "借閱狀態", width: "10%" },
+                    { field: "Keeper", title: "借閱人", width: "10%" },
+                    { command: { text: "借閱紀錄", click: Record }, title: " ", width: "120px" },
+                    { command: { text: "刪除", click: Delete_Book }, title: " ", width: "120px" }
+                ]
+            })
+        });
+
+        // record window
+        $("#Record_Window").kendoWindow({
+            title: "借閱紀錄",
+            width: "50%",
+            visible: false,
+            modal: true,
+            action: ["Close"]
+        });
+
+        $("#Detail-Window").kendoWindow({
+            title: "明細畫面",
+            width: "40%",
+            visible: false,
+            modal: true,
+            action: ["Close"]
+        });
+
+    });
+
+    function Delete_Book(e) {
+        e.preventDefault();
+        var msg = "確定要刪除該本書嗎?";
+        if (confirm(msg) == true) {
+            var Book = this.dataItem($(e.currentTarget).closest("tr"));
+
+            if (Book.BookStatusId == "B" || Book.BookStatusId == "C") {
+                alert("借出中，無法刪除");
+            }
+            else {
+                $.ajax({
+                    type: "post",
+                    url: "Book_Delete",
+                    dataType: "Json",
+                    data: { "BookId": Book.BookId },
+                    success: function () {
+                        alert("成功刪除");
+                    }
+                }).done(function (e) {
+                    if (e == true) {
+                        $("#Show_Book_grid").data("kendoGrid").dataSource.read();
+                    }
+                });
+            }
+        }
+    }
+
+
+
+    function Record(e) {
+        e.preventDefault();
+        var BkId = this.dataItem($(e.currentTarget).closest("tr")).BookId;
+        $("#Record_Grid").kendoGrid({
+            dataSource: {
+                transport: {
+                    read: {
+                        url: "/Function/Record",
+                        type: "post",
+                        dataType: "Json",
+                        data: { "BookId": BkId }
+                    }
+                },
+                schema: {
+                    model: {
+                        fields: {
+                            LendDate: { type: "string" },
+                            KeeperId: { type: "string" },
+                            KeeperEname: { type: "string" },
+                            KeeperCname: { type: "string" }
+                        }
+                    }
+                },
+                pageSize: 20
+            },
+            height: 550,
+            sortable: true,
+            pageable: {
+                input: true,
+                numeric: true
+            },
+            columns: [
+                { field: "LendDate", title: "借閱日期", width: "25%" },
+                { field: "KeeperId", title: "借閱人員編號", width: "25%" },
+                { field: "KeeperEname", title: "英文姓名", width: "25%" },
+                { field: "KeeperCname", title: "中文姓名", width: "25%" }
+            ]
+        })
+        $('#Record_Window').data("kendoWindow").center().open();
+    }
+
+    function Detail(e) {
+        var id = $("#Show_Book_grid").data("kendoGrid").dataItem($(e).closest("tr")).BookId;
+        $.ajax({
+            method: "post",
+            url: "BookDetail",
+            dataType: "json",
+            data: { "BookId": id },
+            success: function (res) {
+                $('#Detail-name').text(res.BookName == null ? "" : res.BookName);
+                $('#Detail-author').text(res.Author == null ? "" : res.Author);
+                $('#Detail-publisher').text(res.Publisher == null ? "" : res.Publisher);
+                $('#Detail-introduction').text(res.Introduction == null ? "" : res.Introduction);
+                $('#Detail-buydate').text(res.BuyDate == null ? "" : res.BuyDate);
+                $('#Detail-class').text(res.BookClassName == null ? "" : res.BookClassName);
+            }
+        });
+        $('#Detail-Window').data("kendoWindow").center().open();
+    }
+</script>
